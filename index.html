@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style>
+
+.hexagon {
+  fill: none;
+  stroke: #000;
+  stroke-width: 0px;
+}
+
+</style>
+
+<body>
+
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/d3.hexbin.v0.min.js"></script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+
+<script>
+
+var width = 800,
+    height = 800,
+    i = -1,
+    θ = 0,
+    δθ = .001,
+    n = 10000,
+    k = 10000; // samples to replace per frame - NOT required anymore
+
+var init_msg = '{ "values": [ [100,200], [300,400] ] }';
+var data = JSON.parse(init_msg);
+var points = data.values;
+
+var color = d3.scale.linear()
+    .domain([0, 30])
+    .range(["white", "steelblue"])
+    .interpolate(d3.interpolateLab);
+
+var hexbin = d3.hexbin()
+    .size([height, width])
+    .radius(10);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var hexagon = svg.append("g")
+    .attr("class", "hexagons")
+  .selectAll("path")
+    .data(hexbin(points))
+  .enter().append("path")
+    .attr("d", hexbin.hexagon(10))
+    .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")rotate(90)"; })
+    .style("fill", function(d) { return color(d.length); });
+
+
+
+
+    //JQuery static callback
+    $(function () {
+      var socket = io();
+
+      socket.on('jpet', function(msg){
+
+        console.log(msg);
+
+        data = JSON.parse(msg);
+        //var temp = JSON.stringify(msg);
+        //data = JSON.parse(temp);
+        //console.log(data);
+        points = data.values;
+
+        hexagon = hexagon
+            .data(hexbin(points), function(d) { return d.i + "," + d.j; });
+
+        hexagon.exit().remove();
+
+        hexagon.enter().append("path")
+            .attr("d", hexbin.hexagon(10))
+            .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")rotate(90)"; });
+
+        hexagon
+            .style("fill", function(d) { return color(d.length); });
+
+      });
+    });
+
+</script>
+
+</body>
